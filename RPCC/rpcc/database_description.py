@@ -90,8 +90,9 @@ class DBColumn(object):
 
         self.name = name
 
-        if value_type and type(value_type) is not VType:
-            raise TypeError("Bad type for database table column")
+#        tvt = type(value_type)
+#        if value_type and type(value_type) is not VType:
+#           raise TypeError("Bad type for database table column")
         self.value_type = value_type
         self.size = size
 
