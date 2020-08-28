@@ -52,12 +52,13 @@ die()
 
 restart_server()
 {
-    if /etc/init.d/dhcpd restart >/dev/null 2>&1 ;  then
+    if systemctl restart dhcpd.service >/dev/null 2>&1 ;  then
         :
     else
         err "Failed to restart dhcpd" # This can happen for semantic reasons not caught in syntax check
-        mv ${DHCPD_CONF}.bak ${DHCPD_CONF} || fatal "Failed to restore ${DHCPD_CONF} from backup file"
+        mv -f ${DHCPD_CONF}.bak ${DHCPD_CONF} || fatal "Failed to restore ${DHCPD_CONF} from backup file"
         log "Previous dhcpd.conf file restored"
+        systemctl restart dhcpd.service >/dev/null 2>&1
         /etc/init.d/dhcpd restart >/dev/null 2>&1
         log "dhcpd restarted with previous configuration"
         return
@@ -70,7 +71,7 @@ install_conf()
     if /usr/sbin/dhcpd -t -cf ${TMP_CONF} >/dev/null 2>&1; then
         # Save old config in case restarting server fails
         cp -p ${DHCPD_CONF} ${DHCPD_CONF}.bak || fatal "Failed to copy ${DHCPD_CONF} to backup file"
-        mv ${TMP_CONF} ${DHCPD_CONF} || fatal "Failing to install fetched dhcpd.conf" 
+        mv -f ${TMP_CONF} ${DHCPD_CONF} || fatal "Failing to install fetched dhcpd.conf" 
     else
         fatal "$@ not approved by dhcpd"
     fi
@@ -89,7 +90,7 @@ main()
     fi
     if [ `egrep -v '^#' ${DHCPD_CONF} | wc -l` -lt 10 ]; then
         wget -q -O ${RAW_CONF} ${ADHOC_URL}/dhcpd/${ADHOC_API_VERSION} || fatal "Failed fetching dhcpd.conf from ${ADHOC_URL}"
-        mv ${RAW_CONF} ${TMP_CONF}
+        mv -f ${RAW_CONF} ${TMP_CONF}
         install_conf "Initial dhcpd.conf"
         exit 0
     fi
