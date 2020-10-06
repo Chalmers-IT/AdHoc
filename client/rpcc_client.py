@@ -50,15 +50,16 @@ import urllib2
 
 # ## Kludge to enable TLSv1.2 protocol via urllib2
 #
-old_init = ssl.SSLSocket.__init__
+#old_init = ssl.SSLSocket.__init__
 
 
-@functools.wraps(old_init)
-def adhoc_ssl(self, *args, **kwargs):
-    kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1_2  # @UndefinedVariable
-    old_init(self, *args, **kwargs)
+#@functools.wraps(old_init)
+#def adhoc_ssl(self, *args, **kwargs):
+    #kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1_2  # @UndefinedVariable
+    #old_init(self, *args, **kwargs)
 
-ssl.SSLSocket.__init__ = adhoc_ssl
+#ssl.SSLSocket.__init__ = adhoc_ssl
+sslctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
 #
 # ## End kludge
 
@@ -185,7 +186,7 @@ class RPCC(object):
 
     def _rawcall(self, fun, *args):
         call = json.dumps({"function": fun, "params": args})
-        retstr = urllib2.urlopen(self._url, call.encode("utf-8")).read()
+        retstr = urllib2.urlopen(self._url, call.encode("utf-8"), context=sslctx).read()
         return json.loads(retstr.decode("utf-8"))
 
     def _fundef(self, fun):
