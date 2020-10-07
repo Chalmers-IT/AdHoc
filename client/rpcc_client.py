@@ -5,7 +5,8 @@ Client for RPCC servers.
 
 To create a client proxy, instantiate the RPCCProxy class.
 
-  rpcc = RPCCProxy("https://some.where/", api=1, attrdicts=True)
+  import rpcc_client
+  rpcc = rpcc_client.RPCC("https://some.where/", api=1, attrdicts=True)
 
 Functions on the server appear as methods on the proxy object. 
 
@@ -36,7 +37,7 @@ a GSSAPI authentication to the server by implicitly adding the 'token'
 argument to the session_auth_kerberos call.
 """
 
-import functools
+
 import getpass
 import inspect
 import json
@@ -160,7 +161,7 @@ class RPCC(object):
             self.funname = funname
             
         def doc(self):
-            print self.proxy.server_documentation(self.rpcname)
+            print self.proxy.server_documentation(self.funname)
             
         def __call__(self, *args):
             return self.proxy._call(self.funname, *args)

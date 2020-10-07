@@ -48,24 +48,15 @@ that.
 <h3>Python</h3>
 
 <div class="lvl3">
-<p>Download <a href="../lib/python2.6/rpcc_client.py">rpccclient.py</a> and add
+<p>Download <a href="../lib/python2.6/rpcc_client.py">rpcc_client.py</a> and add
 it to your <tt>site-packages</tt> or keep it in the same directory as
 your code.
-</div>
-
-<h3>Perl</h3>
-
-<div class="lvl3">
-  <ol>
-    There is unfortunately no Perl client module developed. However the PDB.pm module may be of help in
-    developing such a module. See https://cdks.chalmers.se:4434 for more info on this.
-  </ol>
 </div>
 
 <div class="lvl2">
 
 <p>There are no specific programming examples for AdHoc yet. However the examples for PDB might help:<a
-href="client_examples.html">https://cdks.chalmers.se:4434/client_examples.html</a> (in swedish).
+href="client_examples.html">client_examples.html</a> (in swedish).
 
 </div>
 
@@ -99,9 +90,9 @@ turn such a mis-feature off.
 
 <div class="lvl2">
 
-<p>All functions on this server return a struct. For succesful calls,
+<p>All functions on this server return a struct. For successful calls,
 that struct contains the key "result" (with the return value as
-value), and for unsuccesful calls it has the key "error" with an error
+value), and for unsuccessful calls it has the key "error" with an error
 struct as value instead. Those two keys can never appear at the same
 time - a call either succeeded or it did not.
 
@@ -133,7 +124,7 @@ time - a call either succeeded or it did not.
 <div class="lvl2">
 
 <p>Most functions are only callable inside a session, or execution
-context. This is necesarry since XMLRPC (like HTTP on which it is
+context. This is necessary since XMLRPC (like HTTP on which it is
 built) is in itself stateless.
 
 <p>The client modules available from this server has builtin

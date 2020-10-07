@@ -5,7 +5,8 @@ Client for RPCC servers.
 
 To create a client proxy, instantiate the RPCCProxy class.
 
-  rpcc = RPCCProxy("https://some.where/", api=1, attrdicts=True)
+  import rpcc_client
+  rpcc = rpcc_client.RPCC("https://some.where/", api=1, attrdicts=True)
 
 Functions on the server appear as methods on the proxy object. 
 
@@ -36,7 +37,7 @@ a GSSAPI authentication to the server by implicitly adding the 'token'
 argument to the session_auth_kerberos call.
 """
 
-import functools
+
 import getpass
 import inspect
 import json
@@ -50,15 +51,16 @@ import urllib2
 
 # ## Kludge to enable TLSv1.2 protocol via urllib2
 #
-old_init = ssl.SSLSocket.__init__
+#old_init = ssl.SSLSocket.__init__
 
 
-@functools.wraps(old_init)
-def adhoc_ssl(self, *args, **kwargs):
-    kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1_2  # @UndefinedVariable
-    old_init(self, *args, **kwargs)
+#@functools.wraps(old_init)
+#def adhoc_ssl(self, *args, **kwargs):
+    #kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1_2  # @UndefinedVariable
+    #old_init(self, *args, **kwargs)
 
-ssl.SSLSocket.__init__ = adhoc_ssl
+#ssl.SSLSocket.__init__ = adhoc_ssl
+sslctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
 #
 # ## End kludge
 
@@ -159,7 +161,7 @@ class RPCC(object):
             self.funname = funname
             
         def doc(self):
-            print self.proxy.server_documentation(self.rpcname)
+            print self.proxy.server_documentation(self.funname)
             
         def __call__(self, *args):
             return self.proxy._call(self.funname, *args)
@@ -185,7 +187,7 @@ class RPCC(object):
 
     def _rawcall(self, fun, *args):
         call = json.dumps({"function": fun, "params": args})
-        retstr = urllib2.urlopen(self._url, call.encode("utf-8")).read()
+        retstr = urllib2.urlopen(self._url, call.encode("utf-8"), context=sslctx).read()
         return json.loads(retstr.decode("utf-8"))
 
     def _fundef(self, fun):

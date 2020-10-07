@@ -1,11 +1,12 @@
-#!/home/viktor/python2.6/bin/python2.6
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Client for RPCC servers.
 
 To create a client proxy, instantiate the RPCCProxy class.
 
-  rpcc = RPCCProxy("https://some.where/", api=1, attrdicts=True)
+  import rpcc_client
+  rpcc = rpcc_client.RPCC("https://some.where/", api=1, attrdicts=True)
 
 Functions on the server appear as methods on the proxy object. 
 
@@ -31,13 +32,50 @@ filled in using getpass.
 
 The proxy uses JSON when communicating with the server.
 
+If the Python kerberos module is installed, the client will perform
+a GSSAPI authentication to the server by implicitly adding the 'token'
+argument to the session_auth_kerberos call.
 """
 
+
 import getpass
+import inspect
 import json
+import os
 import re
+import ssl
+import sys
 import time
 import urllib2
+
+
+# ## Kludge to enable TLSv1.2 protocol via urllib2
+#
+#old_init = ssl.SSLSocket.__init__
+
+
+#@functools.wraps(old_init)
+#def adhoc_ssl(self, *args, **kwargs):
+    #kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1_2  # @UndefinedVariable
+    #old_init(self, *args, **kwargs)
+
+#ssl.SSLSocket.__init__ = adhoc_ssl
+sslctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+#
+# ## End kludge
+
+env_prefix = "ADHOC_"
+
+
+# Automagic way to find out the home of adhoc.
+adhoc_home = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) + "/.."
+# print "ADHOC_HOME=", adhoc_home
+os.environ[env_prefix + "RUNTIME_HOME"] = adhoc_home  # Export as env variable ADHOC_RUNTIME_HOME if needed outside server
+
+sys.path.append(adhoc_home)
+sys.path.append(os.path.join(adhoc_home, 'client'))
+sys.path.append(os.path.join(adhoc_home, 'lib'))
+sys.path.append(os.path.join(adhoc_home, 'lib', 'python2.6'))
 
 
 class AttrDict(dict):
@@ -69,6 +107,51 @@ class RPCCError(Exception):
         return (self.namelist[-1] == errname)
 
 
+class RPCCErrorMixin(object):
+    def init(self, err):
+        self.path = err["name"].split("::")
+        self.name = self.path[-1]
+
+
+class RPCCValueError(RPCCErrorMixin, ValueError):
+    def __init__(self, err):
+        ValueError.__init__(self, err)
+        self.init(err)
+
+
+class RPCCLookupError(RPCCErrorMixin, LookupError):
+    def __init__(self, err):
+        LookupError.__init__(self, err)
+        self.init(err)
+
+
+class RPCCTypeError(RPCCErrorMixin, TypeError):
+    def __init__(self, err):
+        TypeError.__init__(self, err)
+        self.init(err)
+
+
+class RPCCRuntimeError(RPCCErrorMixin, RuntimeError):
+    def __init__(self, err):
+        RuntimeError.__init__(self, err)
+        self.init(err)
+
+
+def error_object(ret, pyexc=True):
+    name = ret["name"]
+    if pyexc:
+        if name.startswith("LookupError"):
+            return RPCCLookupError(ret)
+        elif name.startswith("ValueError"):
+            return RPCCValueError(ret)
+        elif name.startswith("TypeError"):
+            return RPCCTypeError(ret)
+        elif name.startswith("RuntimeError"):
+            return RPCCRuntimeError(ret)
+
+    return RPCCError(ret)
+
+
 class RPCC(object):
     """RPCC client proxy."""
 
@@ -78,7 +161,7 @@ class RPCC(object):
             self.funname = funname
             
         def doc(self):
-            print self.proxy.server_documentation(self.rpcname)
+            print self.proxy.server_documentation(self.funname)
             
         def __call__(self, *args):
             return self.proxy._call(self.funname, *args)
@@ -90,10 +173,12 @@ class RPCC(object):
         self._fundefs = {}
         if url[-1] != '/':
             url += "/"
-        self._url = url + "json?v%d" % (api_version,)
-        self._purl = url.replace("http://", "").replace("https://", "") + "#%d" % (api_version,)
+        self._url = url + "json?v%s" % (api_version,)
+        self._purl = url.replace("http://", "").replace("https://", "") + "#%s" % (api_version,)
+        self._host = url.replace("http://", "").replace("https://", "").split(":")[0]
         self._api = api_version
         self._auth = None
+        # print >>sys.stderr, "URL='%s'"%self._url
         self.reset()
 
     def __getattr__(self, name):
@@ -101,18 +186,17 @@ class RPCC(object):
             return self.FunctionProxy(self, name)
 
     def _rawcall(self, fun, *args):
-        #print "RAWCALL", fun, args
         call = json.dumps({"function": fun, "params": args})
-        retstr = urllib2.urlopen(self._url, call.encode("utf-8")).read()
+        retstr = urllib2.urlopen(self._url, call.encode("utf-8"), context=sslctx).read()
         return json.loads(retstr.decode("utf-8"))
 
     def _fundef(self, fun):
-        try:
-            if fun not in self._fundefs:
-                self._fundefs[fun] = self._rawcall("server_function_definition", fun)["result"]
-            return self._fundefs[fun]
-        except KeyError:
-            raise ValueError("No function %s is defined on the server" % (fun,))
+        if fun not in self._fundefs:
+            ret = self._rawcall("server_function_definition", fun)
+            if "result" not in ret:
+                raise error_object(ret["error"], self._pyexceptions)
+            self._fundefs[fun] = ret["result"]
+        return self._fundefs[fun]
 
     def _function_is_sessioned(self, fun):
         fundef = self._fundef(fun)
@@ -128,12 +212,11 @@ class RPCC(object):
     
     def _get_session(self):
         if self._session_id is None:
-            self._session_id = self._rawcall("session_start")["result"]
+            ret = self._rawcall("session_start")
+            if "error" in ret and ret["error"]["name"] == "LookupError::NoSuchFunction":
+                raise ValueError("Session support has not been enabled in the server")
+            self._session_id = ret["result"]
         return self._session_id
-
-    def stop(self):
-        if self._session_id is not None:
-            self._rawcall("session_stop", self._session_id)
 
     def _call(self, fun, *args):
         if self._function_is_sessioned(fun):
@@ -147,6 +230,18 @@ class RPCC(object):
                 args.append({'_': True})
             elif isinstance(args[2], str) or isinstance(args[2], unicode):
                 args[2] = self._parse_digstr(args[2])
+
+        if fun == "session_auth_kerberos":
+            try:
+                import kerberos
+            except:
+                raise ValueError("No kerberos module installed - cannot perform kerberos authentication")
+
+            (_res, ctx) = kerberos.authGSSClientInit("HTTP@" + self._host)
+            kerberos.authGSSClientStep(ctx, "")
+            token = kerberos.authGSSClientResponse(ctx)
+            # print >>sys.stderr, "TOKEN=",token
+            args.append(token)
 
         # Perform call, measuring passed time.
         start_time = time.time()
@@ -176,17 +271,8 @@ class RPCC(object):
             if self._attrdicts:
                 err = self._convert_to_attrdicts(err)
 
-            errname = err['name']
-            if self._pyexceptions and errname.startswith('ValueError'):
-                raise ValueError(err)
-            elif self._pyexceptions and errname.startswith('LookupError'):
-                raise LookupError(err)
-            elif self._pyexceptions and errname.startswith('RuntimeError'):
-                raise RuntimeError(err)
-            elif self._pyexceptions and errname.startswith('TypeError'):
-                raise TypeError(err)
-            else:
-                raise RPCCError(err)
+            _errname = err['name']
+            raise error_object(err, self._pyexceptions)
 
     def _convert_to_attrdicts(self, val):
         if isinstance(val, dict):
@@ -313,7 +399,7 @@ class RPCC(object):
             else:
                 return "Restarted with new session to %s, but login for %s failed" % (self._purl, self._auth)
             
-        for dummy in range(3):
+        for _i in range(3):
             try:
                 self.session_auth_login(oldauth, getpass.getpass("Reconnect %s@%s, password: " % (oldauth, self._purl)))
                 return "Reconnected to %s as %s" % (self._purl, self._auth)
@@ -344,8 +430,7 @@ class RPCC(object):
         if password is None:
             password = getpass.getpass("Password for %s@%s: " % (user, self._url))
         return self.session_auth_login(user, password)
-
-
+#
 # class XXXRPCC_Krb5(RPCC):
 #     def reset(self):
 #         # xmlrpclib.Server cannot pass arbitrary headers with the calls,
@@ -370,21 +455,4 @@ class RPCC(object):
 #         self._sid = res[0][0]['result']
 #
 #         self._server = xmlrpclib.Server(self._url, encoding='UTF-8', allow_none=1)
-        
-    
-def pp(d, ind=0):
-    for (k, v) in d.iteritems():
-        print ' ' * ind + k + ':',
-        if type(v) == type({}):
-            print '{'
-            pp(v, ind + 4)
-            print ' ' * ind + '}'
-        elif type(v) == type([]):
-            print '['
-            for sv in v:
-                pp(sv, ind + 4)
-                print ' ' * ind + ','
-            print ' ' * ind + ']'
-        else:
-            print v
-
+#
