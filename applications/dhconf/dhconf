@@ -8,7 +8,7 @@ ADHOC_GIT_VERSION="@@ADHOC_GIT_VERSION@@"
 set -m 
 
 #
-# Copyright (C) Christer Bernerus, Chalmers University of Technology 2003-2017
+# Copyright (C) Christer Bernérus, Chalmers University of Technology 2003-2020
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ esac
 TEST=`which test`
 
 
-# Code below extracts into MY_DIR the path to the directori in which the actual dhconf script lives.
+# Code below extracts into MY_DIR the path to the directory in which the actual dhconf script lives.
 # The code is designed to handle all the strange ways that man lead up to this script.
 MY_SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$MY_SOURCE" ]; do # resolve $MY_SOURCE until the file is no longer a symlink
@@ -3880,8 +3880,8 @@ defoption()
             ;;
 #M =item encapsulate <optionspace>
         encapsulate\ *)
-            $_defoption_encapsulate_what=`echo $_defoption_type | cut -f2- -d' '`
-            $_defoption_type = "encapsulate"
+            _defoption_encapsulate_what=`echo $_defoption_type | cut -f2- -d' '`
+            _defoption_type="encapsulate"
             _defoption_optstring="'encapsulate':'$_defoption_encapsulate_what', $_defoption_optstring"
             ;;
 #M
@@ -5717,7 +5717,7 @@ mkhost()
     if [ -n "$mkhost_foundfree" ]; then
         exit 0
     fi
-    if [ -n $mkhost_pattern ]; then
+    if [ -n "$mkhost_pattern" ]; then
         echo "Nothing free in network '$mkhost_net' that matches '$mkhost_pattern'"
         exit 2
     fi
@@ -6315,9 +6315,9 @@ chrange()
     fi
 
 
-    if [ -n $2 ]; then
+    if [ -n "$2" ]; then
         chrange_new_start=`_validate_ipaddr $2`
-        if [ -n $chrange_new_start ]; then            
+        if [ -n "$chrange_new_start" ]; then
             chrange_new_end=`_validate_ipaddr $3`
         fi
     fi
@@ -6540,7 +6540,7 @@ chsubnetwork()
     fi
     
     if [ -n "$chsubnetwork_n_flag" ]; then
-        if [ -n `_validate_cidr $chsubnetwork_n_arg` ]; then
+        if [ -n "`_validate_cidr $chsubnetwork_n_arg`" ]; then
             _chsubnetwork_foundaflag
             proxy_call "options['subnetwork']='$chsubnetwork_n_arg'"
         fi
