@@ -134,7 +134,10 @@ class FunSessionAuthLogin(SessionedFunction):
     desc = "Authenticates a session (execution context). If successful, further calls done in that context count as being made by the user whose username was given as argument to this call."
 
     def log_arguments(self, args):
-        return (args[0], args[1], '****')
+        if len(args) > 1:
+            return (args[0], args[1], '****')
+        else:
+            return (args[0], '****')
 
     def do(self):
 

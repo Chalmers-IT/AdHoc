@@ -346,30 +346,30 @@ class RPCC(object):
         return self.session_auth_login(user, password)
 
 
-class XXXRPCC_Krb5(RPCC):
-    def reset(self):
-        # xmlrpclib.Server cannot pass arbitrary headers with the calls,
-        # so run an explicit session_start() to fetch a session id and
-        # associate it with a principal.
-        
-        start_call = xmlrpclib.dumps(tuple(), "session_start", False, "UTF-8")
-        req = urllib2.Request(self._url, start_call)
-        (scheme, host, path, params, query, fragment) = urlparse.urlparse(self._url)
-        if ':' in host:
-            host = host.split(':', 1)[0]
-
-        (res, ctx) = kerberos.authGSSClientInit("HTTP@" + host)
-        kerberos.authGSSClientStep(ctx, "")
-        token = kerberos.authGSSClientResponse(ctx)
-
-        req.add_header('Authorization', "Negotiate " + token)
-        result = urllib2.urlopen(req)
-
-        start_response = result.read()
-        res = xmlrpclib.loads(start_response)
-        self._sid = res[0][0]['result']
-        
-        self._server = xmlrpclib.Server(self._url, encoding='UTF-8', allow_none=1)
+# class XXXRPCC_Krb5(RPCC):
+#     def reset(self):
+#         # xmlrpclib.Server cannot pass arbitrary headers with the calls,
+#         # so run an explicit session_start() to fetch a session id and
+#         # associate it with a principal.
+#
+#         start_call = xmlrpclib.dumps(tuple(), "session_start", False, "UTF-8")
+#         req = urllib2.Request(self._url, start_call)
+#         (scheme, host, path, params, query, fragment) = urlparse.urlparse(self._url)
+#         if ':' in host:
+#             host = host.split(':', 1)[0]
+#
+#         (res, ctx) = kerberos.authGSSClientInit("HTTP@" + host)
+#         kerberos.authGSSClientStep(ctx, "")
+#         token = kerberos.authGSSClientResponse(ctx)
+#
+#         req.add_header('Authorization', "Negotiate " + token)
+#         result = urllib2.urlopen(req)
+#
+#         start_response = result.read()
+#         res = xmlrpclib.loads(start_response)
+#         self._sid = res[0][0]['result']
+#
+#         self._server = xmlrpclib.Server(self._url, encoding='UTF-8', allow_none=1)
         
     
 def pp(d, ind=0):

@@ -430,6 +430,10 @@ class OptionDefManager(AdHocManager):
         
         sql_params = {"option_base": id}
         if my_type.startswith("integer") or my_type.startswith("unsigned"):
+            u_maxval = 2147483647  # Database type int is always signed !
+            i_maxval = 2147483647
+            i_minval = -2147483647
+
             if my_type.endswith(' 8'):
                 u_maxval = 255
                 i_maxval = 127
@@ -439,7 +443,7 @@ class OptionDefManager(AdHocManager):
                 i_maxval = 8191
                 i_minval = -8191
             if my_type.endswith(' 32'):
-                u_maxval = 4294967295
+                u_maxval = 2147483647  # Database type int is always signed !
                 i_maxval = 2147483647
                 i_minval = -2147483647
             if my_type.startswith("unsigned"):
