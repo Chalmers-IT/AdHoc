@@ -1,6 +1,6 @@
 TOP=../..
 SUBDIRS=
-DISTDIR=${TOP}/dist/dhconf
+DISTDIR=${TOP}/dist/adhoc-scripts
 RELEASEDIR=${TOP}/releases
 RPCC_DIR=${TOP}/RPCC/client_libs
 
@@ -23,16 +23,13 @@ install: clean
 	git_version=`git rev-list --max-count=1 HEAD`;\
 	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
 	mkdir -p ${DISTDIR};\
-	cp INSTALL.txt dhconfproxy.py ${RPCC_DIR}/rpcc_client.py ${DISTDIR};\
-	sed "s/@@ADHOC_RELEASE@@/$${revno}/" < dhconf | \
-	sed "s/@@ADHOC_GIT_VERSION@@/$${git_version}/" > ${DISTDIR}/dhconf ;\
-	(cd ${DISTDIR}; chmod +x dhconf; ./dhconf Release; mv ./dhconf-* ./dhconf ) ;\
+	cp adhoc adhoc2 adhoc-test main.py ${RPCC_DIR}/rpcc_client.py ${DISTDIR};\
+	(cd ${DISTDIR}; chmod +x adhoc adhoc2 adhoc-test ) ;\
 	(cd ${DISTDIR}; find . -name \*.pyc -exec rm {} \;)
 
-release: install
+release: gitstatus install
 	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
-	cp ${DISTDIR}/INSTALL.txt ${RELEASEDIR}/INSTALL_dhconf.txt ;\
-	(cd ${DISTDIR}/..; mv dhconf dhconf-$${revno};/usr/local/bin/gtar cf ${RELEASEDIR}/dhconf-$${revno}.tar dhconf-$${revno};)
+	(cd ${DISTDIR}/..; mv adhoc-scripts adhoc-scripts-$${revno};/usr/local/bin/gtar cf ${RELEASEDIR}/adhoc-scripts-$${revno}.tar adhoc-scripts-$${revno};)
 	
 patch: gitstatus patchbump install
 
@@ -43,17 +40,31 @@ major: gitstatus majorbump install
 patchbump:
 	(patch=`cat rel_patch`; patch=`expr $${patch} + 1`; echo $${patch} > rel_patch)
 	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
-	git commit rel_patch -m "Bumped patch version to $${revno}"
+	git commit rel_patch -*m "Bumped patch version to $${revno}"
+	git tag -a -m "Bumped a patch release" $${revno} ;\
+        git push --follow-tags
 
 minorbump:
 	(minor=`cat rel_minor`; minor=`expr $${minor} + 1`; echo $${minor} > rel_minor; echo 0 > rel_patch)
 	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
 	git commit rel_minor rel_patch -m "Bumped minor version to $${revno}"
+	git tag -a -m "Bumped a minor release" $${revno} ;\
+	git push --follow-tags
 
 majorbump:
 	(major=`cat rel_major`; major=`expr $${major} + 1`; echo $${major} > rel_major; echo 0 > rel_minor; echo 0 > rel_patch)
 	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
 	git commit rel_major rel_minor rel_patch -m "Bumped major version to $${revno}"
+	git tag -a -m "Bumped a major release" $${revno} ;\
+	git push --follow-tags
+
+nobump:
+	(patch=`cat rel_patch`; patch=`expr $${patch} + 1`; echo $${patch} > rel_patch)
+	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
+	(patch=`cat rel_patch`; patch=`expr $${patch} - 1`; echo $${patch} > rel_patch)
+	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
+        git tag -f -a -m "Re-bumped a patch release" $${revno} ;\
+        git push --follow-tags
 
 gitstatus:
 	if git status -s | awk '{print $$1" "$$2}' | grep -v '\.\./' | grep -v Makefile | egrep "A|M|\?\?" >/dev/null ; then \
