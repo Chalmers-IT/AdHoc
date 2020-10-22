@@ -40,7 +40,7 @@ major: gitstatus majorbump install
 patchbump:
 	(patch=`cat rel_patch`; patch=`expr $${patch} + 1`; echo $${patch} > rel_patch)
 	revno=`cat rel_major`.`cat rel_minor`.`cat rel_patch`;\
-	git commit rel_patch -*m "Bumped patch version to $${revno}"
+	git commit rel_patch -m "Bumped patch version to $${revno}"
 	git tag -a -m "Bumped a patch release" $${revno} ;\
         git push --follow-tags
 
@@ -81,7 +81,7 @@ gitstatus:
 		    if [ `git rev-list --max-count=1 HEAD rel_major` = $${git_version} ]; then \
 			true; \
 		    else \
-			echo "Release number for dhconf needs to be bumped"; \
+			echo "Release number for adhoc-scripts needs to be bumped"; \
 			false; \
 		    fi \
 		fi \

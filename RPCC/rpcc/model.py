@@ -1068,7 +1068,9 @@ class Manager(object):
 
         if oid not in self._model_cache:
             if isinstance(oid, unicode) and self.manages.id_type is str:
-                oid = oid.encode('ascii','ignore')  # Somehow the database returns unicode even thougt the columns are in ascii. Handle that special case here.
+                oid = oid.encode('ascii', 'ignore')  # Somehow the database returns unicode even though the columns are in ascii. Handle that special case here.
+            if isinstance(oid, long) and self.manages.id_type is int:
+                oid = int(oid) # At some point, the database changed the returned type for ints to be long which is harmless until we do explicit type checking...
             if not isinstance(oid, self.manages.id_type):
                 # print "AAAA", self.manages, self.manages.id_type, type(oid), oid
                 raise ValueError("%s id is of type %s, but must be of type %s - supplied value %s isn't" % (self.manages.__name__, type(oid), self.manages.id_type, oid))
